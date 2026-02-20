@@ -13,12 +13,17 @@ services:
     ports:
       - "5544:5432"
     restart: unless-stopped
+    networks:
+      - registry_net
 
   registry:
     image: registry:2
     container_name: registry
     ports:
       - "5432:5000"
+    volumes:
+      - ./backend/certs:/auth
+      - registry_data:/var/lib/registry
     environment:
       REGISTRY_AUTH: token
       REGISTRY_AUTH_TOKEN_REALM: http://192.168.13.73:6500/api/auth
@@ -26,12 +31,11 @@ services:
       REGISTRY_AUTH_TOKEN_ISSUER: my-auth-server
       REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE: /auth/auth.cert
       REGISTRY_STORAGE_DELETE_ENABLED: "true"
-    volumes:
-      - ./backend/certs:/auth
-      - registry_data:/var/lib/registry
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
+    networks:
+      - registry_net
 
   backend:
     build: ./backend
@@ -44,12 +48,27 @@ services:
       PORT: 6500
       HOST: "0.0.0.0"
       REGISTRY_PUBLIC_URL: http://registry:5432
+      REGISTRY_Container_Name: registry
+      REGISTRY_NETWORK: registryui_registry_net
       DB_HOST: postgres
-      DB_PORT: 5544
+      DB_PORT: 5432
       DB_USER: registry
       DB_PASS: registry123
       DB_NAME: registry
       JWT_SECRET: supersecret
+    depends_on:
+      - postgres
+      - registry
+    networks:
+      - registry_net
+
+networks:
+  registry_net:
+    driver: bridge
+
+volumes:
+  registry_data:
+  postgres_data:
     depends_on:
       - postgres
       - registry

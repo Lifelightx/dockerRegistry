@@ -16,3 +16,15 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     ip_address VARCHAR(50),
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS vulnerability_scans (
+    id SERIAL PRIMARY KEY,
+    repository VARCHAR(255) NOT NULL,
+    tag VARCHAR(255) NOT NULL,
+    digest VARCHAR(255),
+    severity_summary JSONB DEFAULT '{}',
+    vulnerabilities JSONB DEFAULT '[]',
+    scan_status VARCHAR(50) DEFAULT 'pending',
+    last_scanned TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(repository, tag)
+);

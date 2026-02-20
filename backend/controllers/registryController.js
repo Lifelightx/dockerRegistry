@@ -68,6 +68,8 @@ const getTagDetails = async (req, res) => {
 
         let created = null;
         let history = [];
+        let architecture;
+        let os;
 
         // Try to fetch Config Blob to get Creation Date and History
         // V2 Schema 2
@@ -76,8 +78,8 @@ const getTagDetails = async (req, res) => {
                 const config = await registryService.getBlob(name, manifest.config.digest);
                 if (config.created) created = config.created;
                 if (config.history) history = config.history;
-                var architecture = config.architecture;
-                var os = config.os;
+                architecture = config.architecture;
+                os = config.os;
             } catch (e) {
                 console.warn(`Failed to fetch config blob for ${name}:${tag}`, e.message);
             }
@@ -102,26 +104,15 @@ const getTagDetails = async (req, res) => {
             repoStats[row.action] = parseInt(row.count);
         });
 
-        // Try to identify who pushed this tag
-        // Heuristic: Find the push event closest to the creation time (within reasonable margin or just slightly before/after)
-        // Since clocks might drift or auth happens before upload complete, we look for the latest push BEFORE or AT creation time, 
-        // OR if that fails, maybe the first one AFTER (if created time is build time and push happened later).
-        // Actually, 'created' in generic config is usually build time. Push happens LATER.
-        // So we want the first push event AFTER the created date.
         let pushedBy = 'Unknown';
         if (created) {
             const createdDate = new Date(created);
-            // Find push events after creation.
             const pusherResult = await pool.query(
                 "SELECT username FROM registry_stats WHERE repository = $1 AND action = 'push' AND timestamp >= $2 ORDER BY timestamp ASC LIMIT 1",
                 [name, createdDate]
             );
             if (pusherResult.rows.length > 0) {
                 pushedBy = pusherResult.rows[0].username;
-            } else {
-                // Fallback: Check if there was a push slightly before (in case created date is slightly in future or skew)
-                // Or just return the last person to push to this repo if we can't match? No, that's misleading.
-                // Maybe "Unknown (Historic)"
             }
         }
 
@@ -134,7 +125,7 @@ const getTagDetails = async (req, res) => {
             architecture,
             os,
             history,
-            manifest, // Return raw manifest
+            manifest,
             stats: repoStats,
             pushedBy
         });
@@ -182,7 +173,7 @@ const getStatistics = async (req, res) => {
 const triggerGC = async (req, res) => {
     try {
         const socketPath = '/var/run/docker.sock';
-        const containerName = 'registry';
+        const containerName = process.env.REGISTRY_CONTAINER_NAME || 'registry';
 
         // 1. Create Exec Instance
         const execCreateUrl = `http://localhost/containers/${containerName}/exec`;
@@ -211,10 +202,6 @@ const triggerGC = async (req, res) => {
         };
 
         const startRes = await axios.post(execStartUrl, execStartBody, execStartConfig);
-
-        // Axios returns the stream/response data. For simple GC output, it usually fits in data.
-        // Docker API returns raw stream with header. We might see some binary chars.
-        // For now, let's just return the data as is or stringified.
         res.json({ message: 'Garbage Collection triggered', output: startRes.data });
 
     } catch (err) {
@@ -227,4 +214,156 @@ const triggerGC = async (req, res) => {
     }
 };
 
-module.exports = { listRepositories, getRepositoryDetails, getTagDetails, deleteTag, getStatistics, triggerGC };
+const scanImage = async (req, res) => {
+    try {
+        const { name, tag } = req.params;
+        const digest = req.body.digest || '';
+
+        // 1. Upsert as pending
+        const existing = await pool.query(
+            "SELECT * FROM vulnerability_scans WHERE repository = $1 AND tag = $2",
+            [name, tag]
+        );
+
+        if (existing.rows.length > 0 && existing.rows[0].scan_status === 'pending') {
+            return res.json({ message: 'Scan already in progress', status: 'pending' });
+        }
+
+        if (existing.rows.length === 0) {
+            await pool.query(
+                "INSERT INTO vulnerability_scans (repository, tag, digest, scan_status) VALUES ($1, $2, $3, 'pending')",
+                [name, tag, digest]
+            );
+        } else {
+            await pool.query(
+                "UPDATE vulnerability_scans SET scan_status = 'pending', last_scanned = CURRENT_TIMESTAMP WHERE repository = $1 AND tag = $2",
+                [name, tag]
+            );
+        }
+
+        // 2. Respond immediately; run scan in background
+        res.json({ message: 'Scan started', status: 'pending' });
+
+        (async () => {
+            const containerName = `trivy_scan_${Date.now()}`;
+            const socketConfig = { socketPath: '/var/run/docker.sock' };
+
+            try {
+                const network = process.env.REGISTRY_NETWORK || 'registryui_default';
+                const registryHost = process.env.REGISTRY_INTERNAL_HOST || 'registry:5000';
+                const imageRef = `${registryHost}/${name}:${tag}`;
+
+                const createBody = {
+                    Image: 'aquasec/trivy:latest',
+                    Cmd: ['image', '--format', 'json', '--insecure', imageRef],
+                    Env: [
+                        `TRIVY_USERNAME=${process.env.TRIVY_REGISTRY_USER || 'admin'}`,
+                        `TRIVY_PASSWORD=${process.env.TRIVY_REGISTRY_PASS || process.env.ADMIN_PASSWORD || 'admin123'}`,
+                        'TRIVY_INSECURE=true',
+                    ],
+                    HostConfig: {
+                        AutoRemove: false,  // MUST be false — we read logs after container stops
+                        NetworkMode: network,
+                    }
+                };
+
+                // Create container
+                await axios.post(
+                    `http://localhost/containers/create?name=${containerName}`,
+                    createBody,
+                    { ...socketConfig, headers: { 'Content-Type': 'application/json' } }
+                );
+
+                // Start container
+                await axios.post(`http://localhost/containers/${containerName}/start`, {}, socketConfig);
+
+                // Wait for container to finish
+                const waitRes = await axios.post(`http://localhost/containers/${containerName}/wait`, {}, socketConfig);
+                const exitCode = waitRes.data.StatusCode;
+
+                // Read logs (stdout + stderr)
+                const logsRes = await axios.get(
+                    `http://localhost/containers/${containerName}/logs?stdout=true&stderr=true`,
+                    { ...socketConfig, responseType: 'arraybuffer' }
+                );
+
+                // Parse Docker multiplex format: [type(1)][0,0,0(3)][size(4)][payload]
+                const rawBuf = Buffer.from(logsRes.data);
+                let stdoutStr = '';
+                let stderrStr = '';
+                let pos = 0;
+                while (pos < rawBuf.length) {
+                    const streamType = rawBuf[pos];
+                    const frameSize = rawBuf.readUInt32BE(pos + 4);
+                    const payload = rawBuf.subarray(pos + 8, pos + 8 + frameSize).toString('utf8');
+                    if (streamType === 1) stdoutStr += payload;
+                    else stderrStr += payload;
+                    pos += 8 + frameSize;
+                }
+
+                // Cleanup container
+                await axios.delete(`http://localhost/containers/${containerName}?force=true`, socketConfig)
+                    .catch(() => { });
+
+                if (exitCode !== 0) {
+                    console.error(`[Trivy] Exit code ${exitCode}.\nStderr: ${stderrStr.slice(0, 600)}`);
+                    throw new Error(`Trivy failed (code ${exitCode}): ${stderrStr.slice(0, 200)}`);
+                }
+
+                // Parse the JSON report
+                const report = JSON.parse(stdoutStr);
+                // Aggregate ALL result sections (OS, npm, pip, etc.)
+                const allVulns = (report.Results || []).flatMap(r => r.Vulnerabilities || []);
+
+                const summary = {
+                    Critical: allVulns.filter(v => v.Severity === 'CRITICAL').length,
+                    High: allVulns.filter(v => v.Severity === 'HIGH').length,
+                    Medium: allVulns.filter(v => v.Severity === 'MEDIUM').length,
+                    Low: allVulns.filter(v => v.Severity === 'LOW').length,
+                };
+
+                await pool.query(
+                    "UPDATE vulnerability_scans SET scan_status = 'completed', severity_summary = $1, vulnerabilities = $2, last_scanned = CURRENT_TIMESTAMP WHERE repository = $3 AND tag = $4",
+                    [JSON.stringify(summary), JSON.stringify(allVulns), name, tag]
+                );
+
+                console.log(`[Trivy] Scan completed for ${name}:${tag} — ${allVulns.length} vulnerabilities.`);
+
+            } catch (err) {
+                console.error('[Trivy] Async Scan Error:', err.message);
+                await axios.delete(
+                    `http://localhost/containers/${containerName}?force=true`,
+                    socketConfig
+                ).catch(() => { });
+                await pool.query(
+                    "UPDATE vulnerability_scans SET scan_status = 'failed' WHERE repository = $1 AND tag = $2",
+                    [name, tag]
+                );
+            }
+        })();
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Failed to trigger scan' });
+    }
+};
+
+const getScanStatus = async (req, res) => {
+    try {
+        const { name, tag } = req.params;
+        const result = await pool.query(
+            "SELECT * FROM vulnerability_scans WHERE repository = $1 AND tag = $2",
+            [name, tag]
+        );
+        if (result.rows.length > 0) {
+            res.json(result.rows[0]);
+        } else {
+            res.json({ scan_status: 'unscanned' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Failed to fetch scan status' });
+    }
+};
+
+module.exports = { listRepositories, getRepositoryDetails, getTagDetails, deleteTag, getStatistics, triggerGC, scanImage, getScanStatus };
