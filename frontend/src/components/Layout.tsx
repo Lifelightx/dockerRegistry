@@ -37,7 +37,7 @@ const Layout = () => {
     ];
 
     return (
-        <div className="min-h-screen flex bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
+        <div className="min-h-screen flex bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 overflow-x-hidden">
             {/* Sidebar - Desktop */}
             <aside className="hidden md:flex flex-col w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 fixed h-full z-20">
                 <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-gray-800">
@@ -105,7 +105,7 @@ const Layout = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 md:ml-64 min-h-screen flex flex-col">
+            <main className="flex-1 md:ml-64 min-h-screen flex flex-col overflow-x-hidden min-w-0">
                 {/* Navbar - Mobile & Tools */}
                 <header className="h-16 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-10 px-6 flex items-center justify-between">
                     <div className="md:hidden flex items-center gap-4">
@@ -129,7 +129,7 @@ const Layout = () => {
                     </button>
                 </header>
 
-                <div className="flex-1 p-6 overflow-y-auto">
+                <div className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
                     <Outlet />
                 </div>
             </main>

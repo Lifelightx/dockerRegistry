@@ -26,6 +26,7 @@ const SecurityScanner = () => {
     const [scanning, setScanning] = useState(false);
     const [loadingRepos, setLoadingRepos] = useState(true);
     const [loadingTags, setLoadingTags] = useState(false);
+    const [loadingStatus, setLoadingStatus] = useState(false);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
@@ -54,10 +55,12 @@ const SecurityScanner = () => {
         setSelectedTag(tag);
         setScanResult(null);
         if (!tag || !selectedRepo) return;
+        setLoadingStatus(true);
         try {
             const { data } = await api.get(`/registry/repositories/${encodeURIComponent(selectedRepo)}/tags/${tag}/scan`);
             setScanResult(data);
         } catch { setScanResult({ scan_status: 'unscanned' }); }
+        finally { setLoadingStatus(false); }
     };
 
     const startPoll = () => {
@@ -153,11 +156,11 @@ const SecurityScanner = () => {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={handleScan}
-                        disabled={!selectedRepo || !selectedTag || scanning}
+                        disabled={!selectedRepo || !selectedTag || scanning || loadingStatus}
                         className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
                     >
-                        <Search size={16} className={scanning ? 'animate-pulse' : ''} />
-                        {scanning ? 'Scanning...' : 'Scan Image'}
+                        <Search size={16} className={(scanning || loadingStatus) ? 'animate-pulse' : ''} />
+                        {loadingStatus ? 'Loading...' : scanning ? 'Scanning...' : 'Scan Image'}
                     </button>
                     {statusBadge()}
                     {scanResult?.last_scanned && (
@@ -186,10 +189,10 @@ const SecurityScanner = () => {
             {scanResult?.scan_status === 'completed' && scanResult.severity_summary && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {(['Critical', 'High', 'Medium', 'Low'] as const).map(sev => (
-                            <div key={sev} className={`p-5 rounded-xl border text-center ${SEVERITY_COLOR[sev.toUpperCase()]}`}>
-                                <div className="text-3xl font-bold mb-1">{scanResult.severity_summary![sev]}</div>
+                            <div key={sev} className={`p-4 rounded-xl border text-center min-w-0 ${SEVERITY_COLOR[sev.toUpperCase()]}`}>
+                                <div className="text-2xl font-bold mb-1">{scanResult.severity_summary![sev]}</div>
                                 <div className="text-xs font-semibold uppercase tracking-wider">{sev}</div>
                             </div>
                         ))}
@@ -197,13 +200,13 @@ const SecurityScanner = () => {
 
                     {/* CVE Table */}
                     {scanResult.vulnerabilities && scanResult.vulnerabilities.length > 0 && (
-                        <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                        <div className="rounded-xl custom-scrollbar border border-gray-200 dark:border-gray-800 overflow-hidden">
                             <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800">
-                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                <h4 className="text-sm  font-semibold text-gray-900 dark:text-white">
                                     Vulnerabilities ({scanResult.vulnerabilities.length})
                                 </h4>
                             </div>
-                            <div className="overflow-x-auto max-h-80 overflow-y-auto">
+                            <div className="overflow-x-auto max-h-80 custom-scrollbar overflow-y-auto">
                                 <table className="w-full text-sm">
                                     <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                                         <tr>
@@ -268,39 +271,41 @@ const SystemSettings = () => {
     };
 
     const tabs = [
-        { id: 'storage', label: 'Storage & Retention', icon: HardDrive },
+        { id: 'storage', label: 'Storage', icon: HardDrive },
         { id: 'security', label: 'Security & Scanning', icon: Shield },
-        { id: 'integration', label: 'Webhooks & Notifications', icon: Bell },
-        { id: 'access', label: 'User Groups & Access', icon: Users },
+        { id: 'integration', label: 'Notifications', icon: Bell },
+        { id: 'access', label: 'IAM', icon: Users },
         { id: 'analytics', label: 'Analytics', icon: BarChart3 },
         { id: 'helm', label: 'Helm Charts', icon: Box },
     ];
 
     return (
-        <div className="space-y-6 max-w-6xl mx-auto">
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm flex flex-col md:flex-row min-h-[600px]">
-                {/* Sidebar Tabs */}
-                <div className="w-full md:w-64 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 p-4 space-y-2">
-                    {tabs.map((tab) => {
-                        const Icon = tab.icon;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id
-                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                                    }`}
-                            >
-                                <Icon size={18} />
-                                {tab.label}
-                            </button>
-                        );
-                    })}
+        <div className="space-y-6 w-full">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm flex flex-col min-h-[600px]">
+                {/* Horizontal Tab Bar */}
+                <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 px-4 overflow-x-auto custom-scrollbar">
+                    <div className="flex gap-1 min-w-max">
+                        {tabs.map((tab) => {
+                            const Icon = tab.icon;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center gap-2 px-4 py-3.5 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === tab.id
+                                        ? 'border-blue-600 text-blue-700 dark:text-blue-400 dark:border-blue-500'
+                                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                                        }`}
+                                >
+                                    <Icon size={16} />
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 p-6 md:p-8 overflow-y-auto">
+                <div className="flex-1 p-6 md:p-8 overflow-y-auto overflow-x-auto custom-scrollbar">
                     {activeTab === 'storage' && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
 

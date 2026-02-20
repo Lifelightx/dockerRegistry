@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { ArrowLeft, FileJson, Layers, Clock, Shield, HardDrive, Calendar, Hash, Trash2, Monitor, AlertTriangle, CheckCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 interface TagDetail {
     name: string;
