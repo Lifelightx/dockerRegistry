@@ -18,4 +18,10 @@ router.get('/repositories/:name', authenticateToken(['admin', 'maintainer', 'use
 router.get('/repositories/:name/tags/:tag', authenticateToken(['admin', 'maintainer', 'user']), getTagDetails);
 router.delete('/repositories/:name/tags/:tag', authenticateToken(['admin']), deleteTag);
 
+// Retention routes
+const { getPolicy, setPolicy, executePolicies } = require('../controllers/retentionController');
+router.get('/retention/:repo', authenticateToken(['admin']), getPolicy);
+router.post('/retention/:repo', authenticateToken(['admin']), setPolicy);
+router.post('/retention/execute', authenticateToken(['admin']), executePolicies);
+
 module.exports = router;

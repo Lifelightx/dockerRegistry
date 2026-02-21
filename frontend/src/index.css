@@ -14,6 +14,19 @@
     --color-primary-800: #1e40af;
     --color-primary-900: #1e3a8a;
     --color-primary-950: #172554;
+
+    /* Override gray palette with neutral deep grays to remove blueish tint in dark mode */
+    --color-gray-50: #fafafa;
+    --color-gray-100: #f5f5f5;
+    --color-gray-200: #e5e5e5;
+    --color-gray-300: #d4d4d4;
+    --color-gray-400: #a3a3a3;
+    --color-gray-500: #737373;
+    --color-gray-600: #525252;
+    --color-gray-700: #404040;
+    --color-gray-800: #262626;
+    --color-gray-900: #171717;
+    --color-gray-950: #0a0a0a;
 }
 
 body {
@@ -21,9 +34,29 @@ body {
 }
 
 @layer utilities {
+
+    /* Global Scrollbar */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        @apply bg-gray-300 dark:bg-gray-700/80 rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        @apply bg-gray-400 dark:bg-gray-600;
+    }
+
+    /* Keep custom-scrollbar for specific areas if needed but make it match */
     .custom-scrollbar::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
     }
 
     .custom-scrollbar::-webkit-scrollbar-track {
@@ -31,9 +64,7 @@ body {
     }
 
     .custom-scrollbar::-webkit-scrollbar-thumb {
-        @apply bg-gray-300 dark:bg-gray-700 rounded-full;
-        background-clip: content-box;
-        border: 2px solid transparent;
+        @apply bg-gray-300 dark:bg-gray-700/80 rounded-full;
     }
 
     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -44,15 +75,19 @@ body {
 .json-key {
     @apply text-purple-600 dark:text-purple-400 font-semibold;
 }
+
 .json-string {
     @apply text-green-600 dark:text-green-400;
 }
+
 .json-number {
     @apply text-blue-600 dark:text-blue-400;
 }
+
 .json-boolean {
     @apply text-yellow-600 dark:text-yellow-400;
 }
+
 .json-null {
     @apply text-gray-500 italic;
 }

@@ -18,6 +18,12 @@ const initDb = async () => {
         console.log('Running migration createStats...');
         await pool.query(statsSql);
 
+        const retentionSqlPath = path.join(__dirname, '../config/migrations/createRetentionPolicies.sql');
+        const retentionSql = fs.readFileSync(retentionSqlPath, 'utf8');
+
+        console.log('Running migration createRetentionPolicies...');
+        await pool.query(retentionSql);
+
         console.log('Migrations completed.');
 
         // Seed Admin User

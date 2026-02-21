@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../lib/api';
 import { ArrowLeft, Tag, Trash2, Copy, Check, Clock, Shield, Terminal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import ConfirmModal from '../components/ui/ConfirmModal';
+import { useNotification } from '../context/NotificationContext';
 
 interface RepoDetails {
     name: string;
@@ -29,6 +31,10 @@ const RepositoryDetails = () => {
     const [loading, setLoading] = useState(true);
     const [copied, setCopied] = useState<string | null>(null);
     const { user } = useAuth();
+    const { success, error: showError } = useNotification();
+
+    const [tagToDelete, setTagToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (name) fetchDetails();
@@ -59,14 +65,18 @@ const RepositoryDetails = () => {
         }
     }
 
-    const handleDelete = async (tag: string) => {
-        if (!window.confirm(`Are you sure you want to delete ${name}:${tag}?`)) return;
+    const executeDelete = async () => {
+        if (!tagToDelete || !name) return;
+        setIsDeleting(true);
         try {
-            if (!name) return;
-            await api.delete(`/registry/repositories/${encodeURIComponent(name)}/tags/${tag}`);
-            setDetails(prev => prev ? ({ ...prev, tags: prev.tags.filter(t => t !== tag) }) : null);
+            await api.delete(`/registry/repositories/${encodeURIComponent(name)}/tags/${tagToDelete}`);
+            setDetails(prev => prev ? ({ ...prev, tags: prev.tags.filter(t => t !== tagToDelete) }) : null);
+            success(`Successfully deleted tag ${tagToDelete}`);
         } catch (error: any) {
-            alert(error.response?.data?.message || 'Failed to delete tag');
+            showError(error.response?.data?.message || 'Failed to delete tag');
+        } finally {
+            setIsDeleting(false);
+            setTagToDelete(null);
         }
     };
 
@@ -198,8 +208,8 @@ const RepositoryDetails = () => {
                                                     onClick={() => copyCommand(pullCmd)}
                                                     title={pullCmd}
                                                     className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${copied === pullCmd
-                                                            ? 'bg-green-500/10 border-green-500/40 text-green-600 dark:text-green-400'
-                                                            : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                                                        ? 'bg-green-500/10 border-green-500/40 text-green-600 dark:text-green-400'
+                                                        : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
                                                         }`}
                                                 >
                                                     {copied === pullCmd ? (
@@ -218,7 +228,7 @@ const RepositoryDetails = () => {
 
                                                 {(user?.role === 'admin' || user?.role === 'maintainer') && (
                                                     <button
-                                                        onClick={() => handleDelete(tag)}
+                                                        onClick={() => setTagToDelete(tag)}
                                                         className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                                                         title="Delete Version"
                                                     >
@@ -240,6 +250,18 @@ const RepositoryDetails = () => {
                     </table>
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={!!tagToDelete}
+                onClose={() => setTagToDelete(null)}
+                onConfirm={executeDelete}
+                title="Delete Image Tag"
+                message={<>Are you sure you want to delete <span className="font-mono font-bold opacity-80">{details.name}:{tagToDelete}</span>? This action is permanent and cannot be undone.</>}
+                confirmText="Delete Tag"
+                icon={Trash2}
+                isDestructive={true}
+                isLoading={isDeleting}
+            />
         </div>
     );
 };

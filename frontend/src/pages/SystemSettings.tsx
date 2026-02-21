@@ -42,8 +42,8 @@ const SystemSettings = () => {
                                 key={id}
                                 onClick={() => setActiveTab(id)}
                                 className={`flex items-center gap-2 px-4 py-3.5 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === id
-                                        ? 'border-blue-600 text-blue-700 dark:text-blue-400 dark:border-blue-500'
-                                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                                    ? 'border-blue-600 text-blue-700 dark:text-blue-400 dark:border-blue-500'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                                     }`}
                             >
                                 <Icon size={16} />

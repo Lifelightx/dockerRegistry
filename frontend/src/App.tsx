@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { NotificationProvider } from './context/NotificationContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -30,52 +31,54 @@ const ProtectedRoute = ({ children, roles }: { children: React.ReactElement, rol
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+      <NotificationProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          <Route element={<Layout />}>
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/repository/:name" element={
-              <ProtectedRoute>
-                <RepositoryDetails />
-              </ProtectedRoute>
-            } />
-            <Route path="/repository/:name/tags/:tag" element={
-              <ProtectedRoute>
-                <TagDetails />
-              </ProtectedRoute>
-            } />
+            <Route element={<Layout />}>
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/repository/:name" element={
+                <ProtectedRoute>
+                  <RepositoryDetails />
+                </ProtectedRoute>
+              } />
+              <Route path="/repository/:name/tags/:tag" element={
+                <ProtectedRoute>
+                  <TagDetails />
+                </ProtectedRoute>
+              } />
 
-            <Route path="/admin/users" element={
-              <ProtectedRoute roles={['admin']}>
-                <UserManagement />
-              </ProtectedRoute>
-            } />
+              <Route path="/admin/users" element={
+                <ProtectedRoute roles={['admin']}>
+                  <UserManagement />
+                </ProtectedRoute>
+              } />
 
-            <Route path="/recent-activities" element={
-              <ProtectedRoute>
-                <RecentActivities />
-              </ProtectedRoute>
-            } />
+              <Route path="/recent-activities" element={
+                <ProtectedRoute>
+                  <RecentActivities />
+                </ProtectedRoute>
+              } />
 
-            <Route path="/admin/settings" element={
-              <ProtectedRoute>
-                <SystemSettings />
-              </ProtectedRoute>
-            } />
+              <Route path="/admin/settings" element={
+                <ProtectedRoute>
+                  <SystemSettings />
+                </ProtectedRoute>
+              } />
 
-          </Route>
+            </Route>
 
-          
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </NotificationProvider>
     </ThemeProvider>
   );
 }

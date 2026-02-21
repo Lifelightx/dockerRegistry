@@ -20,10 +20,12 @@ app.use('/api/registry', registryRoutes);
 app.use('/api/users', userRoutes);
 
 const initDb = require('./scripts/initDb');
+const cronScripts = require('./scripts/cron');
 
 app.listen(port, host, async () => {
     try {
         await initDb();
+        cronScripts.initCron();
         console.log(`Server is running on port http://${host}:${port}`);
     } catch (err) {
         console.error('Failed to start server:', err);
