@@ -43,7 +43,7 @@ const Layout = () => {
     const mainOffset = collapsed ? 'md:ml-16' : 'md:ml-64';
 
     return (
-        <div className="min-h-screen flex bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 overflow-x-hidden">
+        <div className="h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
 
             {/* ─── Desktop Sidebar ─── */}
             <aside
@@ -158,7 +158,7 @@ const Layout = () => {
             </aside>
 
             {/* ─── Main Content ─── */}
-            <main className={cn('flex-1 min-h-screen flex flex-col overflow-x-hidden min-w-0 transition-all duration-300', mainOffset)}>
+            <main className={cn('flex-1 h-screen overflow-y-auto flex flex-col min-w-0 transition-all duration-300', mainOffset)}>
 
                 {/* Sticky Navbar */}
                 <header className="h-16 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-10 px-6 flex items-center justify-between shrink-0">
@@ -187,7 +187,7 @@ const Layout = () => {
                 </header>
 
                 {/* Page content — scrollable */}
-                <div className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
+                <div className="flex-1 p-6">
                     <Outlet />
                 </div>
             </main>
