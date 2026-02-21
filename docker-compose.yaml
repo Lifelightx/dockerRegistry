@@ -30,6 +30,15 @@ services:
       REGISTRY_AUTH_TOKEN_ISSUER: my-auth-server
       REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE: /auth/auth.cert
       REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      REGISTRY_NOTIFICATIONS_ENDPOINTS: |
+        - name: backend-webhook
+          disabled: false
+          url: http://backend:6500/api/registry/webhook
+          headers:
+             Authorization: [Bearer webhook_internal]
+          timeout: 500ms
+          threshold: 5
+          backoff: 1s
     restart: unless-stopped
     networks:
       - registry_net

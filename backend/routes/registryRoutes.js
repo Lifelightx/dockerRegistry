@@ -24,4 +24,9 @@ router.get('/retention/:repo', authenticateToken(['admin']), getPolicy);
 router.post('/retention/:repo', authenticateToken(['admin']), setPolicy);
 router.post('/retention/execute', authenticateToken(['admin']), executePolicies);
 
+// Webhook handling
+const { handleWebhook } = require('../controllers/webhookController');
+// No authenticateToken here because it receives requests from the Docker registry daemon
+router.post('/webhook', handleWebhook);
+
 module.exports = router;

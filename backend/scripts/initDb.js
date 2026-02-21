@@ -24,6 +24,12 @@ const initDb = async () => {
         console.log('Running migration createRetentionPolicies...');
         await pool.query(retentionSql);
 
+        const notifSettingsSqlPath = path.join(__dirname, '../config/migrations/createNotificationSettings.sql');
+        const notifSettingsSql = fs.readFileSync(notifSettingsSqlPath, 'utf8');
+
+        console.log('Running migration createNotificationSettings...');
+        await pool.query(notifSettingsSql);
+
         console.log('Migrations completed.');
 
         // Seed Admin User
