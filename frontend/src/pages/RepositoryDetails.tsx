@@ -194,14 +194,27 @@ const RepositoryDetails = () => {
                                                 ) : <span className="text-gray-400 text-xs">-</span>}
                                             </td>
                                             <td className="px-6 py-4 text-right flex items-center justify-end gap-3">
-                                                <div
+                                                <button
                                                     onClick={() => copyCommand(pullCmd)}
-                                                    className="group flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-600 dark:text-gray-300 cursor-pointer hover:border-blue-400 transition-colors"
-                                                    title="Copy Pull Command"
+                                                    title={pullCmd}
+                                                    className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${copied === pullCmd
+                                                            ? 'bg-green-500/10 border-green-500/40 text-green-600 dark:text-green-400'
+                                                            : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                                                        }`}
                                                 >
-                                                    <Terminal size={12} />
-                                                    {copied === pullCmd ? <Check size={12} className="text-green-500" /> : <Copy size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />}
-                                                </div>
+                                                    {copied === pullCmd ? (
+                                                        <>
+                                                            <Check size={12} className="shrink-0" />
+                                                            Copied!
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Terminal size={12} className="shrink-0" />
+                                                            Pull
+                                                            <Copy size={11} className="shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                                        </>
+                                                    )}
+                                                </button>
 
                                                 {(user?.role === 'admin' || user?.role === 'maintainer') && (
                                                     <button

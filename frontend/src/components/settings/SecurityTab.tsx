@@ -166,7 +166,7 @@ const SecurityTab = () => {
                     <button
                         onClick={handleScan}
                         disabled={!selectedRepo || !selectedTag || scanning || loadingStatus}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+                        className="flex items-center cursor-pointer gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
                     >
                         <Search size={16} className={(scanning || loadingStatus) ? 'animate-pulse' : ''} />
                         {loadingStatus ? 'Loading...' : scanning ? 'Scanning...' : 'Scan Image'}
