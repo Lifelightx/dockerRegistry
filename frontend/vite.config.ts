@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
+          // target: 'http://backend:6500',
           target: 'http://192.168.13.73:6500',
           changeOrigin: true,
           secure: false,

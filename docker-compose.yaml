@@ -1,6 +1,7 @@
 version: "3.9"
 
 services:
+
   postgres:
     image: postgres:16
     container_name: registry_postgres
@@ -10,8 +11,6 @@ services:
       POSTGRES_PASSWORD: registry123
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5544:5432"
     restart: unless-stopped
     networks:
       - registry_net
@@ -20,19 +19,17 @@ services:
     image: registry:2
     container_name: registry
     ports:
-      - "5432:5000"
+      - "5000:5000"
     volumes:
       - ./backend/certs:/auth
       - registry_data:/var/lib/registry
     environment:
       REGISTRY_AUTH: token
-      REGISTRY_AUTH_TOKEN_REALM: http://192.168.13.73:6500/api/auth
+      REGISTRY_AUTH_TOKEN_REALM: http://backend:6500/api/auth
       REGISTRY_AUTH_TOKEN_SERVICE: registry
       REGISTRY_AUTH_TOKEN_ISSUER: my-auth-server
       REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE: /auth/auth.cert
       REGISTRY_STORAGE_DELETE_ENABLED: "true"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     networks:
       - registry_net
@@ -42,40 +39,27 @@ services:
     container_name: registry_backend
     ports:
       - "6500:6500"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       PORT: 6500
       HOST: "0.0.0.0"
-      REGISTRY_PUBLIC_URL: http://registry:5432
-      REGISTRY_Container_Name: registry
-      REGISTRY_NETWORK: registryui_registry_net
+      REGISTRY_PUBLIC_URL: http://registry:5000
+      REGISTRY_CONTAINER_NAME: registry
+      # REGISTRY_HOST: ip:5000 mandetory field
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: registry
       DB_PASS: registry123
       DB_NAME: registry
-      JWT_SECRET: supersecret
+      JWT_SECRET: mkEjSjBN$&nb&km585Mnt
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+
     depends_on:
       - postgres
       - registry
+    restart: unless-stopped
     networks:
       - registry_net
-
-networks:
-  registry_net:
-    driver: bridge
-
-volumes:
-  registry_data:
-  postgres_data:
-    depends_on:
-      - postgres
-      - registry
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -83,12 +67,16 @@ volumes:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://localhost:6500
-      PROXY_TARGET: http://backend:6500
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      VITE_API_URL: http://backend:6500
+    depends_on:
+      - backend
     restart: unless-stopped
+    networks:
+      - registry_net
+
+networks:
+  registry_net:
+    driver: bridge
 
 volumes:
   postgres_data:
