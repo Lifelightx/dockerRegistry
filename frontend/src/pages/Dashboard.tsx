@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { useNavigate } from 'react-router-dom';
-import { Search, Box, Tag, Loader2 } from 'lucide-react';
+import { Search, Box, Tag, Loader2, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Pagination from '../components/ui/Pagination';
+import ConfirmModal from '../components/ui/ConfirmModal';
+import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 
 interface Repository {
     name: string;
@@ -16,8 +20,15 @@ const Dashboard = () => {
     const [repos, setRepos] = useState<Repository[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const { success, error: showError } = useNotification();
+
+    const [repoToDelete, setRepoToDelete] = useState<string | null>(null);
+    const [isDeletingRepo, setIsDeletingRepo] = useState(false);
 
     useEffect(() => {
         fetchRepos();
@@ -34,9 +45,31 @@ const Dashboard = () => {
         }
     };
 
-
+    const deleteRepository = async () => {
+        if (!repoToDelete) return;
+        setIsDeletingRepo(true);
+        try {
+            await api.delete(`/registry/repositories/${encodeURIComponent(repoToDelete)}`);
+            setRepos(repos.filter(r => r.name !== repoToDelete));
+            success(`Successfully deleted repository ${repoToDelete}`);
+        } catch (err: any) {
+            showError(err.response?.data?.message || 'Failed to delete repository');
+        } finally {
+            setIsDeletingRepo(false);
+            setRepoToDelete(null);
+        }
+    };
 
     const filteredRepos = repos.filter(r => r.name.toLowerCase().includes(search.toLowerCase()));
+
+    // Pagination logic
+    const totalPages = Math.ceil(filteredRepos.length / itemsPerPage);
+    const paginatedRepos = filteredRepos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    // Reset pagination when search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search]);
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
@@ -81,7 +114,7 @@ const Dashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                    {filteredRepos.map((repo) => (
+                                    {paginatedRepos.map((repo) => (
                                         <motion.tr
                                             key={repo.name}
                                             initial={{ opacity: 0 }}
@@ -129,6 +162,17 @@ const Dashboard = () => {
                                                     )}
                                                 </div>
                                             </td>
+                                            <td className="px-6 py-4 text-right">
+                                                {user?.role === 'admin' && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); setRepoToDelete(repo.name); }}
+                                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors ml-auto"
+                                                        title="Delete Repository"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </td>
                                         </motion.tr>
                                     ))}
                                     {filteredRepos.length === 0 && (
@@ -141,6 +185,23 @@ const Dashboard = () => {
                                 </tbody>
                             </table>
                         </div>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                            totalItems={filteredRepos.length}
+                            itemsPerPage={itemsPerPage}
+                        />
+
+                        <ConfirmModal
+                            isOpen={!!repoToDelete}
+                            title="Delete Repository"
+                            message={`Are you sure you want to delete the repository "${repoToDelete}"? This will permanently delete ALL tags and layers associated with this image. This action cannot be undone.`}
+                            onConfirm={deleteRepository}
+                            onClose={() => setRepoToDelete(null)}
+                            isLoading={isDeletingRepo}
+                            confirmText="Delete Repository"
+                        />
                     </div>
                 </div>
             )}

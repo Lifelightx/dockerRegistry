@@ -11,6 +11,9 @@ A full-stack application for managing and viewing Docker Registry content. This 
 -   **🕒 Recent Activities**: Track real-time push and pull events across the registry.
 -   **🔐 Secure Authentication**: Integrated JWT-based authentication system.
 -   **🌓 Dark/Light Mode**: Fully responsive UI with theme support for comfortable viewing.
+-   **🛡️ Vulnerability Scanning (CVE)**: Integrated Aquasec Trivy scanner running in dedicated server mode with persistent vulnerability database caching.
+-   **🗑️ Repository & Tag Deletion**: Securely hard-delete entire repositories or specific image tags directly from the registry's storage.
+-   **🪝 Webhooks & Tracking**: Real-time listeners for Docker push/pull events stored cleanly in PostgreSQL.
 -   **🐳 Docker Native**: Seamless integration with standard Docker Registry v2.
 
 ## 🗺️ Roadmap & Missing Features
@@ -18,8 +21,6 @@ A full-stack application for managing and viewing Docker Registry content. This 
 Here are the key enterprise-ready features planned for future development:
 
 - [ ] **🗑️ Garbage Collection Scheduler**: UI button or scheduled job to free disk space from deleted images.
-- [ ] **🛡️ Vulnerability Scanning (CVE)**: Integration with Trivy/Clair for security scanning.
-- [ ] **🪝 Webhooks & Notifications**: Alerts to Slack/Discord/CI pipelines on push/pull events.
 - [ ] **⏳ Retention Policies**: Automated cleanup rules (e.g., "Keep last 5 tags").
 - [ ] **👥 User Groups & Project Isolation**: Group-based access control (RBAC).
 - [ ] **📊 Advanced Analytics**: Storage usage over time, bandwidth stats, etc.
@@ -107,6 +108,7 @@ If you want to run the services individually for development:
 ## 📦 Services
 
 - **Registry**: The official Docker Registry v2 image.
+- **Trivy Server**: Dedicated Aquasec Trivy server for offline, instant container vulnerability scanning.
 - **Postgres**: Database for storing user data and metadata.
 - **Backend**: Node.js service connecting the frontend to the registry and database.
 - **Frontend**: Modern UI to browse repositories, tags, and manage users.

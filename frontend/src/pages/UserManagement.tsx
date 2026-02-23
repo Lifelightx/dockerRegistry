@@ -5,6 +5,7 @@ import { Trash2, UserPlus, Shield, User, Loader2, Pencil, Eye, EyeOff } from 'lu
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { useNotification } from '../context/NotificationContext';
+import Pagination from '../components/ui/Pagination';
 
 interface UserData {
     id: number;
@@ -23,6 +24,8 @@ const UserManagement = () => {
     const [submitting, setSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const { success, error: showError } = useNotification();
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 8;
 
     const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -98,6 +101,9 @@ const UserManagement = () => {
         }
     };
 
+    const totalPages = Math.ceil(users.length / itemsPerPage);
+    const paginatedUsers = users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     if (loading) return (
         <div className="flex justify-center py-20">
             <Loader2 className="animate-spin text-blue-600" size={32} />
@@ -133,7 +139,7 @@ const UserManagement = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                        {users.map((user) => (
+                        {paginatedUsers.map((user) => (
                             <motion.tr
                                 key={user.id}
                                 initial={{ opacity: 0 }}
@@ -185,6 +191,13 @@ const UserManagement = () => {
                         ))}
                     </tbody>
                 </table>
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    totalItems={users.length}
+                    itemsPerPage={itemsPerPage}
+                />
             </div>
 
             {/* Create User Modal */}

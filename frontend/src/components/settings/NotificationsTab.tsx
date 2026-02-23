@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, Loader2, Save, Play, CheckCircle2 } from 'lucide-react';
+import { Mail, Loader2, Play, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../../lib/api';
 import { useNotification } from '../../context/NotificationContext';

@@ -60,8 +60,12 @@ const RepositoryDetails = () => {
         try {
             const { data } = await api.get<TagDetail>(`/registry/repositories/${encodeURIComponent(repoName)}/tags/${tag}`);
             setTagDetails(prev => ({ ...prev, [tag]: data }));
-        } catch (e) {
+        } catch (e: any) {
             console.error(`Failed tag info ${tag}`, e);
+            if (e.response && e.response.status === 404) {
+                // Remove ghost tags from view
+                setDetails(prev => prev ? ({ ...prev, tags: prev.tags.filter(t => t !== tag) }) : null);
+            }
         }
     }
 

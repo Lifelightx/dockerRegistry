@@ -1,10 +1,11 @@
-version: "3.9"
 
 services:
 
   postgres:
     image: postgres:16
     container_name: registry_postgres
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: registry
       POSTGRES_USER: registry
@@ -25,7 +26,7 @@ services:
       - registry_data:/var/lib/registry
     environment:
       REGISTRY_AUTH: token
-      REGISTRY_AUTH_TOKEN_REALM: http://backend:6500/api/auth
+      REGISTRY_AUTH_TOKEN_REALM: http://localhost:6500/api/auth
       REGISTRY_AUTH_TOKEN_SERVICE: registry
       REGISTRY_AUTH_TOKEN_ISSUER: my-auth-server
       REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE: /auth/auth.cert
@@ -33,12 +34,24 @@ services:
       REGISTRY_NOTIFICATIONS_ENDPOINTS: |
         - name: backend-webhook
           disabled: false
-          url: http://backend:6500/api/registry/webhook
+          url: http://localhost:6500/api/registry/webhook
           headers:
              Authorization: [Bearer webhook_internal]
           timeout: 500ms
           threshold: 5
           backoff: 1s
+    restart: unless-stopped
+    networks:
+      - registry_net
+
+  trivy:
+    image: aquasec/trivy:latest
+    container_name: trivy_server
+    command: server --listen 0.0.0.0:4954 --timeout 30m --db-repository ghcr.io/aquasecurity/trivy-db:2,mirror.gcr.io/aquasec/trivy-db:2
+    ports:
+      - "4954:4954"
+    volumes:
+      - trivy_cache:/root/.cache/trivy
     restart: unless-stopped
     networks:
       - registry_net
@@ -54,12 +67,13 @@ services:
       REGISTRY_PUBLIC_URL: http://registry:5000
       REGISTRY_CONTAINER_NAME: registry
       # REGISTRY_HOST: ip:5000 mandetory field
+      TRIVY_SERVER: http://trivy:4954
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: registry
       DB_PASS: registry123
       DB_NAME: registry
-      JWT_SECRET: mkEjSjBN$&nb&km585Mnt
+      
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: admin123
 
@@ -90,3 +104,4 @@ networks:
 volumes:
   postgres_data:
   registry_data:
+  trivy_cache:

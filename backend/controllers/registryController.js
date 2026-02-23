@@ -1,5 +1,7 @@
 const registryService = require('../services/registryService');
 const axios = require('axios');
+const { signToken } = require('../utils/jwt');
+const pool = require('../config/db');
 
 const listRepositories = async (req, res) => {
     try {
@@ -52,7 +54,7 @@ const getRepositoryDetails = async (req, res) => {
         const tags = await registryService.getTags(name);
 
         // Return public registry URL for UI
-        const registryHost = process.env.REGISTRY_HOST || 'localhost:5432';
+        const registryHost = process.env.REGISTRY_INTERNAL_HOST || 'localhost:5000';
 
         res.json({ name, tags, registryHost });
     } catch (err) {
@@ -130,7 +132,11 @@ const getTagDetails = async (req, res) => {
             pushedBy
         });
     } catch (err) {
-        console.error(err);
+        if (err.isAxiosError && err.response && err.response.status === 404) {
+            console.warn(`Tag detail fetch 404: ${req.params.name}:${req.params.tag}`);
+            return res.status(404).json({ message: 'Tag manifest not found' });
+        }
+        console.error(err.message);
         res.status(500).json({ message: 'Failed to fetch tag details' });
     }
 }
@@ -142,8 +148,25 @@ const deleteTag = async (req, res) => {
         const { digest } = await registryService.getManifest(name, tag);
         if (!digest) return res.status(404).json({ message: 'Tag not found' });
 
-        // 2. Delete
+        // 2. Delete digest
         await registryService.deleteImage(name, digest);
+
+        // 3. Remove the tag folder directly from the registry container (to fix the Docker Registry V2 phantom tag issue)
+        try {
+            const axios = require('axios');
+            const containerName = process.env.REGISTRY_CONTAINER_NAME || 'registry';
+            const socketConfig = { socketPath: '/var/run/docker.sock', headers: { 'Content-Type': 'application/json' } };
+            const execCreateBody = {
+                AttachStdout: true,
+                AttachStderr: true,
+                Cmd: ["rm", "-rf", `/var/lib/registry/docker/registry/v2/repositories/${name}/_manifests/tags/${tag}`]
+            };
+            const createRes = await axios.post(`http://localhost/containers/${containerName}/exec`, execCreateBody, socketConfig);
+            await axios.post(`http://localhost/exec/${createRes.data.Id}/start`, { Detach: false, Tty: false }, socketConfig);
+        } catch (e) {
+            console.error('Failed to hard delete tag folder:', e.message);
+        }
+
         res.json({ message: 'Image deleted' });
     } catch (err) {
         console.error(err);
@@ -151,7 +174,37 @@ const deleteTag = async (req, res) => {
     }
 };
 
-const pool = require('../config/db');
+const deleteRepository = async (req, res) => {
+    try {
+        const { name } = req.params;
+
+        // 1. Remove from database
+        await pool.query("DELETE FROM registry_stats WHERE repository = $1", [name]);
+        await pool.query("DELETE FROM vulnerability_scans WHERE repository = $1", [name]);
+
+        // 2. Remove the entire repository folder from the registry container
+        try {
+            const axios = require('axios');
+            const containerName = process.env.REGISTRY_CONTAINER_NAME || 'registry';
+            const socketConfig = { socketPath: '/var/run/docker.sock', headers: { 'Content-Type': 'application/json' } };
+            const execCreateBody = {
+                AttachStdout: true,
+                AttachStderr: true,
+                Cmd: ["rm", "-rf", `/var/lib/registry/docker/registry/v2/repositories/${name}`]
+            };
+            const createRes = await axios.post(`http://localhost/containers/${containerName}/exec`, execCreateBody, socketConfig);
+            await axios.post(`http://localhost/exec/${createRes.data.Id}/start`, { Detach: false, Tty: false }, socketConfig);
+        } catch (e) {
+            console.error('Failed to hard delete repository folder:', e.message);
+            return res.status(500).json({ message: 'Failed to physically delete repository' });
+        }
+
+        res.json({ message: 'Repository deleted successfully' });
+    } catch (err) {
+        console.error('Error deleting repository:', err);
+        res.status(500).json({ message: 'Failed to delete repository' });
+    }
+};
 
 const getStatistics = async (req, res) => {
     try {
@@ -250,20 +303,22 @@ const scanImage = async (req, res) => {
 
             try {
                 const network = process.env.REGISTRY_NETWORK || 'registryui_default';
-                const registryHost = process.env.REGISTRY_INTERNAL_HOST || 'registry:5000';
+                const registryHost = process.env.REGISTRY_INTERNAL_HOST || 'localhost:5000';
                 const imageRef = `${registryHost}/${name}:${tag}`;
+
+                const trivyToken = signToken('admin', [{ type: 'repository', name: name, actions: ['pull'] }]);
 
                 const createBody = {
                     Image: 'aquasec/trivy:latest',
                     Cmd: ['image', '--format', 'json', '--insecure', imageRef],
                     Env: [
-                        `TRIVY_USERNAME=${process.env.TRIVY_REGISTRY_USER || 'admin'}`,
-                        `TRIVY_PASSWORD=${process.env.TRIVY_REGISTRY_PASS || process.env.ADMIN_PASSWORD || 'admin123'}`,
+                        `TRIVY_REGISTRY_TOKEN=${trivyToken}`,
                         'TRIVY_INSECURE=true',
+                        `TRIVY_SERVER=${process.env.TRIVY_SERVER || 'http://localhost:4954'}`
                     ],
                     HostConfig: {
                         AutoRemove: false,  // MUST be false — we read logs after container stops
-                        NetworkMode: network,
+                        NetworkMode: 'host',
                     }
                 };
 
@@ -366,4 +421,4 @@ const getScanStatus = async (req, res) => {
     }
 };
 
-module.exports = { listRepositories, getRepositoryDetails, getTagDetails, deleteTag, getStatistics, triggerGC, scanImage, getScanStatus };
+module.exports = { listRepositories, getRepositoryDetails, getTagDetails, deleteTag, deleteRepository, getStatistics, triggerGC, scanImage, getScanStatus };

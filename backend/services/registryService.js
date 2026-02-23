@@ -4,7 +4,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const REGISTRY_URL = process.env.REGISTRY_PUBLIC_URL || 'http://localhost:5432';
+const REGISTRY_URL = process.env.REGISTRY_PUBLIC_URL || 'http://localhost:5000';
 
 const getAdminToken = (scope) => {
     let access = [];
