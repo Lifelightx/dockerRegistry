@@ -15,7 +15,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401 || error.response?.status === 403) {
+        // Special case: don't log out if fetching global repos fails due to lack of admin permissions
+        const isGlobalRepoFetch = error.config?.url?.includes('/registry/repositories') && error.response?.status === 403;
+
+        if ((error.response?.status === 401 || error.response?.status === 403) && !isGlobalRepoFetch) {
             if (!window.location.pathname.includes('/login')) {
                 localStorage.removeItem('token');
                 window.location.href = '/login';

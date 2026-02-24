@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import RepositoryDetails from './pages/RepositoryDetails';
 import TagDetails from './pages/TagDetails';
 import UserManagement from './pages/UserManagement';
+import GroupDetails from './pages/GroupDetails';
 import RecentActivities from './pages/RecentActivities';
 import SystemSettings from './pages/SystemSettings';
 
@@ -56,6 +57,12 @@ function App() {
               <Route path="/admin/users" element={
                 <ProtectedRoute roles={['admin']}>
                   <UserManagement />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/admin/groups/:id" element={
+                <ProtectedRoute roles={['admin']}>
+                  <GroupDetails />
                 </ProtectedRoute>
               } />
 

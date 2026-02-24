@@ -12,6 +12,12 @@ const initDb = async () => {
         console.log('Running migration createUsers...');
         await pool.query(sql);
 
+        const groupsSqlPath = path.join(__dirname, '../config/migrations/createGroups.sql');
+        const groupsSql = fs.readFileSync(groupsSqlPath, 'utf8');
+
+        console.log('Running migration createGroups...');
+        await pool.query(groupsSql);
+
         const statsSqlPath = path.join(__dirname, '../config/migrations/createStats.sql');
         const statsSql = fs.readFileSync(statsSqlPath, 'utf8');
 

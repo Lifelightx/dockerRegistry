@@ -56,10 +56,29 @@ const dockerAuth = async (req, res) => {
 
                     if (user.role === 'admin') {
                         allowedActions.push(action);
-                    } else if (user.role === 'maintainer') {
-                        if (['pull', 'push'].includes(action)) allowedActions.push(action);
-                    } else if (user.role === 'user') {
-                        if (['pull'].includes(action)) allowedActions.push(action);
+                    } else {
+                        // Check group permissions for non-admin users
+                        try {
+                            const groupPerms = await pool.query(`
+                                SELECT permission FROM group_repositories gr
+                                JOIN group_members gm ON gr.group_id = gm.group_id
+                                WHERE gm.user_id = $1 AND gr.repository_name = $2
+                            `, [user.id, name]);
+
+                            let canPush = false;
+                            let canPull = false;
+
+                            for (let row of groupPerms.rows) {
+                                if (row.permission === 'push_pull') { canPush = true; canPull = true; }
+                                if (row.permission === 'push') canPush = true;
+                                if (row.permission === 'pull') canPull = true;
+                            }
+
+                            if (action === 'push' && canPush) allowedActions.push(action);
+                            if (action === 'pull' && canPull) allowedActions.push(action);
+                        } catch (err) {
+                            console.error('Group permission check failed:', err);
+                        }
                     }
                 }
 

@@ -3,6 +3,16 @@ const axios = require('axios');
 const { signToken } = require('../utils/jwt');
 const pool = require('../config/db');
 
+const checkRepoAccess = async (userId, userRole, repositoryName) => {
+    if (userRole === 'admin') return true;
+    const result = await pool.query(`
+        SELECT 1 FROM group_repositories gr
+        JOIN group_members gm ON gr.group_id = gm.group_id
+        WHERE gm.user_id = $1 AND gr.repository_name = $2
+    `, [userId, repositoryName]);
+    return result.rows.length > 0;
+};
+
 const listRepositories = async (req, res) => {
     try {
         const repos = await registryService.getCatalog();
@@ -24,8 +34,21 @@ const listRepositories = async (req, res) => {
             statsMap[row.repository][row.action] = parseInt(row.count);
         });
 
+        // Filter repositories based on user permissions if not admin
+        let allowedRepos = repos;
+        if (req.user && req.user.role !== 'admin') {
+            const userReposResult = await pool.query(`
+                SELECT DISTINCT repository_name 
+                FROM group_repositories gr
+                JOIN group_members gm ON gr.group_id = gm.group_id
+                WHERE gm.user_id = $1
+            `, [req.user.id]);
+            const allowedNames = userReposResult.rows.map(r => r.repository_name);
+            allowedRepos = repos.filter(repo => allowedNames.includes(repo));
+        }
+
         // Enrich with basic tag info for the dashboard
-        const enrichedRepos = await Promise.all(repos.map(async (name) => {
+        const enrichedRepos = await Promise.all(allowedRepos.map(async (name) => {
             try {
                 const tags = await registryService.getTags(name);
                 const repoStats = statsMap[name] || { push: 0, pull: 0 };
@@ -51,6 +74,12 @@ const listRepositories = async (req, res) => {
 const getRepositoryDetails = async (req, res) => {
     try {
         const { name } = req.params;
+
+        const hasAccess = await checkRepoAccess(req.user.id, req.user.role, name);
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'Insufficient permissions for this repository' });
+        }
+
         const tags = await registryService.getTags(name);
 
         // Return public registry URL for UI
@@ -66,6 +95,12 @@ const getRepositoryDetails = async (req, res) => {
 const getTagDetails = async (req, res) => {
     try {
         const { name, tag } = req.params;
+
+        const hasAccess = await checkRepoAccess(req.user.id, req.user.role, name);
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'Insufficient permissions for this repository' });
+        }
+
         const { manifest, digest } = await registryService.getManifest(name, tag);
 
         let created = null;
@@ -272,6 +307,11 @@ const scanImage = async (req, res) => {
         const { name, tag } = req.params;
         const digest = req.body.digest || '';
 
+        const hasAccess = await checkRepoAccess(req.user.id, req.user.role, name);
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'Insufficient permissions for this repository' });
+        }
+
         // 1. Upsert as pending
         const existing = await pool.query(
             "SELECT * FROM vulnerability_scans WHERE repository = $1 AND tag = $2",
@@ -406,6 +446,12 @@ const scanImage = async (req, res) => {
 const getScanStatus = async (req, res) => {
     try {
         const { name, tag } = req.params;
+
+        const hasAccess = await checkRepoAccess(req.user.id, req.user.role, name);
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'Insufficient permissions for this repository' });
+        }
+
         const result = await pool.query(
             "SELECT * FROM vulnerability_scans WHERE repository = $1 AND tag = $2",
             [name, tag]
