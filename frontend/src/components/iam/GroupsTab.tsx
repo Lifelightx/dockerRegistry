@@ -5,6 +5,7 @@ import api from '../../lib/api';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import Pagination from '../ui/Pagination';
 
 export interface Group {
     id: number;
@@ -21,6 +22,9 @@ const GroupsTab = () => {
     const [groups, setGroups] = useState<Group[]>([]);
     const [loading, setLoading] = useState(true);
     const { success, error: showError } = useNotification();
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newGroupName, setNewGroupName] = useState('');
@@ -70,6 +74,9 @@ const GroupsTab = () => {
         }
     };
 
+    const totalPages = Math.ceil(groups.length / itemsPerPage);
+    const paginatedGroups = groups.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -110,7 +117,7 @@ const GroupsTab = () => {
                                     <td colSpan={5} className="py-10 text-center text-gray-500">No groups found.</td>
                                 </tr>
                             ) : (
-                                groups.map((group) => (
+                                paginatedGroups.map((group) => (
                                     <tr
                                         key={group.id}
                                         onClick={() => navigate(`/admin/groups/${group.id}`)}
@@ -161,6 +168,15 @@ const GroupsTab = () => {
                         </tbody>
                     </table>
                 </div>
+                {totalPages > 0 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={groups.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                    />
+                )}
             </div>
 
             {/* Create Group Modal */}

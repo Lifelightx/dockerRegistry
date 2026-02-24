@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/ui/Pagination';
 import type { Group } from '../components/iam/GroupsTab';
 
 interface Member {
@@ -27,6 +28,10 @@ const GroupDetails = () => {
     const { user } = useAuth();
     const { success, error: showError } = useNotification();
     const [activeTab, setActiveTab] = useState<'members' | 'repositories'>('members');
+
+    const [memberPage, setMemberPage] = useState(1);
+    const [repoPage, setRepoPage] = useState(1);
+    const itemsPerPage = 10;
 
     // State
     const [group, setGroup] = useState<Group | null>(null);
@@ -163,6 +168,12 @@ const GroupDetails = () => {
     const unassignedUsers = allUsers.filter(u => !members.find(m => m.id === u.id));
     const unassignedRepos = allRepos.filter(r => !repositories.find(ar => ar.repository_name === r.name));
 
+    const totalMemberPages = Math.ceil(members.length / itemsPerPage);
+    const paginatedMembers = members.slice((memberPage - 1) * itemsPerPage, memberPage * itemsPerPage);
+
+    const totalRepoPages = Math.ceil(repositories.length / itemsPerPage);
+    const paginatedRepos = repositories.slice((repoPage - 1) * itemsPerPage, repoPage * itemsPerPage);
+
     if (loading || !group) {
         return <div className="flex justify-center py-20 text-gray-500">Loading details...</div>;
     }
@@ -269,7 +280,7 @@ const GroupDetails = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                                {members.map(member => (
+                                                {paginatedMembers.map(member => (
                                                     <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                                         <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{member.username}</td>
                                                         <td className="px-6 py-4">
@@ -313,6 +324,15 @@ const GroupDetails = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                    {totalMemberPages > 0 && (
+                                        <Pagination
+                                            currentPage={memberPage}
+                                            totalPages={totalMemberPages}
+                                            totalItems={members.length}
+                                            itemsPerPage={itemsPerPage}
+                                            onPageChange={setMemberPage}
+                                        />
+                                    )}
                                 </motion.div>
                             ) : (
                                 <motion.div key="repos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
@@ -381,7 +401,7 @@ const GroupDetails = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                                {repositories.map(repo => (
+                                                {paginatedRepos.map(repo => (
                                                     <tr key={repo.repository_name} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                                         <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{repo.repository_name}</td>
                                                         <td className="px-6 py-4">
@@ -411,6 +431,15 @@ const GroupDetails = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                    {totalRepoPages > 0 && (
+                                        <Pagination
+                                            currentPage={repoPage}
+                                            totalPages={totalRepoPages}
+                                            totalItems={repositories.length}
+                                            itemsPerPage={itemsPerPage}
+                                            onPageChange={setRepoPage}
+                                        />
+                                    )}
                                 </motion.div>
                             )}
                         </AnimatePresence>
