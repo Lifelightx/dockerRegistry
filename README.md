@@ -16,16 +16,6 @@ A full-stack application for managing and viewing Docker Registry content. This 
 -   **🪝 Webhooks & Tracking**: Real-time listeners for Docker push/pull events stored cleanly in PostgreSQL.
 -   **🐳 Docker Native**: Seamless integration with standard Docker Registry v2.
 
-## 🗺️ Roadmap & Missing Features
-
-Here are the key enterprise-ready features planned for future development:
-
-- [ ] **🗑️ Garbage Collection Scheduler**: UI button or scheduled job to free disk space from deleted images.
-- [ ] **⏳ Retention Policies**: Automated cleanup rules (e.g., "Keep last 5 tags").
-- [ ] **👥 User Groups & Project Isolation**: Group-based access control (RBAC).
-- [ ] **📊 Advanced Analytics**: Storage usage over time, bandwidth stats, etc.
-- [ ] **📦 Helm Chart Support**: Dedicated UI for Helm charts stored in the registry.
-
 ## 🚀 Quick Start (Docker)
 
 The easiest way to get the entire stack running is using Docker Compose.
