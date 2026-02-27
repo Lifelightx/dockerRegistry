@@ -7,9 +7,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: registry
-      POSTGRES_USER: registry
-      POSTGRES_PASSWORD: registry123
+      POSTGRES_DB: ${POSTGRESS_DB}
+      POSTGRES_USER: ${POSTGRESS_USER}
+      POSTGRES_PASSWORD: ${POSTGRESS_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -26,15 +26,15 @@ services:
       - registry_data:/var/lib/registry
     environment:
       REGISTRY_AUTH: token
-      REGISTRY_AUTH_TOKEN_REALM: http://localhost:6500/api/auth
-      REGISTRY_AUTH_TOKEN_SERVICE: registry
-      REGISTRY_AUTH_TOKEN_ISSUER: my-auth-server
-      REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE: /auth/auth.cert
+      REGISTRY_AUTH_TOKEN_REALM: ${REGISTRY_AUTH_REALM}
+      REGISTRY_AUTH_TOKEN_SERVICE: ${REGISTRY_AUTH_SERVICE}
+      REGISTRY_AUTH_TOKEN_ISSUER: ${REGISTRY_AUTH_ISSUER}
+      REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE: ${REGISTRY_AUTH_ROOTCERTBUNDLE}
       REGISTRY_STORAGE_DELETE_ENABLED: "true"
       REGISTRY_NOTIFICATIONS_ENDPOINTS: |
         - name: backend-webhook
           disabled: false
-          url: http://localhost:6500/api/registry/webhook
+          url: ${REGISTRY_WEBHOOK_URL}
           headers:
              Authorization: [Bearer webhook_internal]
           timeout: 500ms
@@ -62,20 +62,20 @@ services:
     ports:
       - "6500:6500"
     environment:
-      PORT: 6500
-      HOST: "0.0.0.0"
-      REGISTRY_PUBLIC_URL: http://registry:5000
-      REGISTRY_CONTAINER_NAME: registry
-      # REGISTRY_HOST: ip:5000 mandetory field
-      TRIVY_SERVER: http://trivy:4954
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: registry
-      DB_PASS: registry123
-      DB_NAME: registry
+      PORT: ${BACKEND_PORT}
+      HOST: ${BACKEND_HOST}
+      REGISTRY_PUBLIC_URL: ${REGISTRY_PUBLIC_URL}
+      REGISTRY_CONTAINER_NAME: ${REGISTRY_CONTAINER_NAME}
+      REGISTRY_HOST: ${REGISTRY_HOST}
+      TRIVY_SERVER: ${TRIVY_SERVER}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_NAME: ${DB_NAME}
       
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: admin123
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
 
     depends_on:
       - postgres
@@ -90,7 +90,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://backend:6500
+      VITE_API_URL: ${VITE_API_URL}
     depends_on:
       - backend
     restart: unless-stopped

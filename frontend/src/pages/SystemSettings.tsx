@@ -11,8 +11,8 @@ const tabs = [
     { id: 'storage', label: 'Storage', icon: HardDrive },
     { id: 'security', label: 'Security & Scanning', icon: Shield },
     { id: 'integration', label: 'Notifications', icon: Bell },
-    { id: 'access', label: 'IAM', icon: Users },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    // { id: 'access', label: 'IAM', icon: Users },
+    // { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'helm', label: 'Helm Charts', icon: Box },
 ];
 
