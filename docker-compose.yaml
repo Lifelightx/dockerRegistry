@@ -7,9 +7,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: ${POSTGRESS_DB}
-      POSTGRES_USER: ${POSTGRESS_USER}
-      POSTGRES_PASSWORD: ${POSTGRESS_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -61,6 +61,8 @@ services:
     container_name: registry_backend
     ports:
       - "6500:6500"
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
     environment:
       PORT: ${BACKEND_PORT}
       HOST: ${BACKEND_HOST}
@@ -73,7 +75,6 @@ services:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       DB_NAME: ${DB_NAME}
-      
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
 
