@@ -13,6 +13,7 @@ router.post('/gc', authenticateToken(['admin']), triggerGC);
 // Scan routes
 router.post('/repositories/:name/tags/:tag/scan', authenticateToken(['admin', 'maintainer']), scanImage);
 router.get('/repositories/:name/tags/:tag/scan', authenticateToken(['admin', 'maintainer', 'user']), getScanStatus);
+router.get('/repositories/:name/tags/:tag/scan/export', authenticateToken(['admin', 'maintainer', 'user']), require('../controllers/registryController').exportScanReport);
 
 router.get('/repositories/:name', authenticateToken(['admin', 'maintainer', 'user']), getRepositoryDetails);
 router.get('/repositories/:name/tags/:tag', authenticateToken(['admin', 'maintainer', 'user']), getTagDetails);

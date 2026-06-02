@@ -467,4 +467,68 @@ const getScanStatus = async (req, res) => {
     }
 };
 
-module.exports = { listRepositories, getRepositoryDetails, getTagDetails, deleteTag, deleteRepository, getStatistics, triggerGC, scanImage, getScanStatus };
+const exportScanReport = async (req, res) => {
+    try {
+        const { name, tag } = req.params;
+        const hasAccess = await checkRepoAccess(req.user.id, req.user.role, name);
+        if (!hasAccess) {
+            return res.status(403).json({ message: 'Insufficient permissions for this repository' });
+        }
+
+        const result = await pool.query(
+            "SELECT * FROM vulnerability_scans WHERE repository = $1 AND tag = $2",
+            [name, tag]
+        );
+
+        if (result.rows.length === 0 || result.rows[0].scan_status !== 'completed') {
+            return res.status(404).json({ message: 'No completed scan found to export' });
+        }
+
+        const scan = result.rows[0];
+        let vulns = [];
+        try {
+            vulns = typeof scan.vulnerabilities === 'string' ? JSON.parse(scan.vulnerabilities) : scan.vulnerabilities;
+        } catch (e) {
+            vulns = scan.vulnerabilities || [];
+        }
+
+        const ExcelJS = require('exceljs');
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Vulnerabilities');
+
+        worksheet.columns = [
+            { header: 'CVE ID', key: 'VulnerabilityID', width: 20 },
+            { header: 'Package Name', key: 'PkgName', width: 25 },
+            { header: 'Installed Version', key: 'InstalledVersion', width: 25 },
+            { header: 'Fixed Version', key: 'FixedVersion', width: 25 },
+            { header: 'Severity', key: 'Severity', width: 15 },
+            { header: 'Title', key: 'Title', width: 50 },
+            { header: 'Description', key: 'Description', width: 80 }
+        ];
+
+        worksheet.getRow(1).font = { bold: true };
+
+        vulns.forEach(v => {
+            worksheet.addRow({
+                VulnerabilityID: v.VulnerabilityID || '',
+                PkgName: v.PkgName || '',
+                InstalledVersion: v.InstalledVersion || '',
+                FixedVersion: v.FixedVersion || '',
+                Severity: v.Severity || '',
+                Title: v.Title || '',
+                Description: v.Description || ''
+            });
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=scan_report_${name.replace(/[^a-zA-Z0-9_-]/g, '_')}_${tag}.xlsx`);
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Export failed:', err);
+        res.status(500).json({ message: 'Failed to export scan report' });
+    }
+};
+
+module.exports = { listRepositories, getRepositoryDetails, getTagDetails, deleteTag, deleteRepository, getStatistics, triggerGC, scanImage, getScanStatus, exportScanReport };

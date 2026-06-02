@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Shield, Search, ChevronDown,
-    AlertTriangle, CheckCircle, Clock, XCircle,
+    AlertTriangle, CheckCircle, Clock, XCircle, Download,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../../lib/api';
@@ -13,6 +13,7 @@ interface ScanResult {
         VulnerabilityID: string;
         PkgName: string;
         InstalledVersion: string;
+        FixedVersion?: string;
         Severity: string;
         Title: string;
     }[];
@@ -96,6 +97,25 @@ const SecurityTab = () => {
         } catch {
             setScanResult({ scan_status: 'failed' });
             setScanning(false);
+        }
+    };
+
+    const handleExport = async () => {
+        if (!selectedRepo || !selectedTag) return;
+        try {
+            const response = await api.get(`/registry/repositories/${encodeURIComponent(selectedRepo)}/tags/${selectedTag}/scan/export`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `scan_report_${selectedRepo.replace(/[^a-zA-Z0-9_-]/g, '_')}_${selectedTag}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Failed to export report', error);
         }
     };
 
@@ -210,10 +230,17 @@ const SecurityTab = () => {
                     {/* CVE Table */}
                     {scanResult.vulnerabilities && scanResult.vulnerabilities.length > 0 && (
                         <div className="rounded-xl custom-scrollbar border border-gray-200 dark:border-gray-800 overflow-hidden">
-                            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800">
+                            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
                                 <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
                                     Vulnerabilities ({scanResult.vulnerabilities.length})
                                 </h4>
+                                <button
+                                    onClick={handleExport}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-400 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 rounded-md transition-colors"
+                                >
+                                    <Download size={14} />
+                                    Export to Excel
+                                </button>
                             </div>
                             <div className="overflow-x-auto max-h-80 custom-scrollbar overflow-y-auto">
                                 <table className="w-full text-sm">
@@ -222,6 +249,7 @@ const SecurityTab = () => {
                                             <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">CVE ID</th>
                                             <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Package</th>
                                             <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Version</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Fixed In</th>
                                             <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Severity</th>
                                             <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Title</th>
                                         </tr>
@@ -232,12 +260,13 @@ const SecurityTab = () => {
                                                 <td className="px-4 py-2 font-mono text-xs text-blue-600 dark:text-blue-400 whitespace-nowrap">{v.VulnerabilityID}</td>
                                                 <td className="px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap">{v.PkgName}</td>
                                                 <td className="px-4 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">{v.InstalledVersion}</td>
+                                                <td className="px-4 py-2 text-green-600 dark:text-green-500 font-mono text-xs whitespace-nowrap">{v.FixedVersion || '-'}</td>
                                                 <td className="px-4 py-2 whitespace-nowrap">
                                                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${SEVERITY_COLOR[v.Severity] || 'bg-gray-100 text-gray-600'}`}>
                                                         {v.Severity}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-2 text-gray-600 dark:text-gray-300 text-xs max-w-xs truncate">{v.Title}</td>
+                                                <td className="px-4 py-2 text-gray-600 dark:text-gray-300 text-xs max-w-xs truncate" title={v.Title}>{v.Title}</td>
                                             </tr>
                                         ))}
                                     </tbody>
