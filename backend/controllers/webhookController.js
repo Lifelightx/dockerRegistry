@@ -10,13 +10,17 @@ const getEmailConfig = async () => {
 
 // Handle incoming Docker Registry webhooks
 exports.handleWebhook = async (req, res) => {
+     console.log("Headers:", req.headers);
+    console.log("Body:", req.body);
     // Acknowledge the webhook immediately so the registry doesn't retry
     res.status(200).send('OK');
 
     try {
-        const events = req.body.events;
-        if (!events || events.length === 0) return;
-
+        const events = req.body?.events;
+        if (!Array.isArray(events) || events.length === 0) {
+        console.log("No webhook events received", req.body);
+        return;
+        }
         // Fetch settings once per batch of events
         const config = await getEmailConfig();
         if (!config || !config.enabled || !config.smtpHost || !config.emailTo) {

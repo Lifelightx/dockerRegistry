@@ -343,7 +343,7 @@ const scanImage = async (req, res) => {
 
             try {
                 const network = process.env.REGISTRY_NETWORK || 'registryui_default';
-                const registryHost = process.env.REGISTRY_INTERNAL_HOST || 'localhost:5000';
+                const registryHost = process.env.REGISTRY_HOST || 'localhost:5000';
                 const imageRef = `${registryHost}/${name}:${tag}`;
 
                 const trivyToken = signToken('admin', [{ type: 'repository', name: name, actions: ['pull'] }]);
@@ -358,7 +358,7 @@ const scanImage = async (req, res) => {
                     ],
                     HostConfig: {
                         AutoRemove: false,  // MUST be false — we read logs after container stops
-                        NetworkMode: 'host',
+                        NetworkMode: 'registryui_registry_net',
                     }
                 };
 
@@ -401,7 +401,7 @@ const scanImage = async (req, res) => {
                     .catch(() => { });
 
                 if (exitCode !== 0) {
-                    console.error(`[Trivy] Exit code ${exitCode}.\nStderr: ${stderrStr.slice(0, 600)}`);
+                    console.error(`[Trivy] Exit code ${exitCode}.\nStderr: ${stderrStr}`);
                     throw new Error(`Trivy failed (code ${exitCode}): ${stderrStr.slice(0, 200)}`);
                 }
 
